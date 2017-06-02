@@ -9,3 +9,4 @@ def tokenize(path):
         #    words.append(nltk.word_tokenize(
     print(sentences)
 tokenize("C:/Users/alon464/Desktop/assignment1-data/c00.txt")
+print("hi Alon")
