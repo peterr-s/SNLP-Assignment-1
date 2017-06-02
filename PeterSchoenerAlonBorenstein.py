@@ -1,3 +1,9 @@
+# TO UPDATE FILE:
+# git commit -m "message"
+# git push
+# TO GET NEW VERSION
+# git pull
+
 import nltk
 #--------------Ex1------------------
 def tokenize(path):
