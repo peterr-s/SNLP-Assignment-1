@@ -1,5 +1,7 @@
 import nltk
 import os
+import math
+import matplotlib.pyplot
 
 # takes a file path as argument
 # returns list of sentences, each represented as a list of tokens
@@ -88,20 +90,41 @@ class Ngram :
 			V = len(self.__types)
 			
 			# total probability is the product of the conditional probabilities
-			p *= self.__model[key][sentence[i]] / (N + (alpha * V))
+			p *= C / (N + (alpha * V))
 		return p
+	
+	def perplexity(self, sentences, alpha = 1) :
+		# calculate product of sentence likelihoods
+		p = 1.0
+		for sentence in sentences :
+			p *= self.prob_add(sentence, alpha)
+		
+		return pow(p, -1.0 / len(sentences))
 	
 	def __str__(self) :
 		return "Order " + str(self.__n + 1) + " ngram model with " + self.__token_ct + " entries:\n[" + str(self.__model) + "]"
 
 bigrams = Ngram(2)
+sentences = []
 for file in os.listdir("./assignment1-data/") :
 	if file[0] == 'c' :
 		print(file)
-		for sentence in tokenize("./assignment1-data/" + file) :
-			bigrams.update(sentence)
+		#for sentence in tokenize("./assignment1-data/" + file) :
+		#	bigrams.update(sentence)
+		sentences += tokenize("./assignment1-data/" + file)
+
+for sentence in sentences :
+	bigrams.update(sentence)
 
 sent = ["I", "had", "."]
 print(bigrams.prob_mle(sent))
 print(bigrams.prob_add(sent))
 print(bigrams.prob_add(sent, 0.5))
+
+alphas = [float(x) / 10 for x in range(0, 10)]
+perplexities = []
+for a in alphas :
+	print(a)
+	perplexities += [bigrams.perplexity(sentences, alpha = a)]
+matplotlib.pyplot.plot(alphas, perplexities)
+matplotlib.pyplot.show()
