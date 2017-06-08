@@ -27,6 +27,7 @@ class Ngram :
 		self.__model = {}
 		self.__n = n - 1 # this is a shortcut for splitting input more easily later on
 		self.__types = set([]) # because for 3+ grams len(__model) doesn't necessarily give the number of distinct tokens
+		self.N = 0
 	
 	# takes a sentence as argument
 	# updates the model with the new ngrams
@@ -35,7 +36,7 @@ class Ngram :
 		self.__types |= set(sentence)
 	
 		# add sentence begin and end tags
-		sentence = ["^^^"] + sentence + ["$$$"]
+		sentence = ["^^^"] * self.__n + sentence + ["$$$"] * self.__n
 		
 		# find all n-1 grams except the last
 		for i in range(self.__n, len(sentence)) :
@@ -52,6 +53,7 @@ class Ngram :
 				
 				self.__model[key][sentence[i]] = 1
 				self.__model[key]["%%%TOTAL"] += 1
+		self.N = sum([self.__model[k]["%%%TOTAL"] for k in self.__model])
 	
 	# takes a sentence as argument
 	# evaluates likelihood (MLE) of the sentence against the model
@@ -59,7 +61,7 @@ class Ngram :
 		# probability of sentence so far
 		p = 1.0
 		
-		sentence = ["^^^"] + sentence + ["$$$"] # cf. update()
+		sentence = ["^^^"] * self.__n + sentence + ["$$$"] * self.__n # cf. update()
 		for i in range(self.__n, len(sentence)) :
 			key = tuple(sentence[i - self.__n : i])
 			if key not in self.__model or sentence[i] not in self.__model[key]:
@@ -73,53 +75,45 @@ class Ngram :
 			p *= self.__model[key][sentence[i]] / total
 		return p
 	
-	# takes a sentence as argument
-	# optionally takes alpha as argument, defaults to 1 (Laplace)
-	# evaluates smoothed likelihood of the sentence against the model
-	def prob_add(self, sentence, alpha = 1) :
+	def __log_prob_add(self, sentence, alpha = 1) :
 		# probability of sentence so far
 		p = 0
 		
-		sentence = ["^^^"] + sentence + ["$$$"] # cf. update()
+		sentence = ["^^^"] * self.__n + sentence + ["$$$"] * self.__n # cf. update()
 		for i in range(self.__n, len(sentence)) :
 			key = tuple(sentence[i - self.__n : i])
 			C = alpha # alpha + occurrences of the target ngram
 			if key in self.__model and sentence[i] in self.__model[key]:
 				C += self.__model[key][sentence[i]]
-			
 			# the sum of all the possibilities given the first n-1 terms so the conditional probablility can be calculated
-			N = self.__model[key]["%%%TOTAL"]#sum([self.__model[key][w] for w in self.__model[key]])
+			#N = 0
+			#if key in self.__model :
+			#	N = self.__model[key]["%%%TOTAL"]
 			V = len(self.__types)
 			
 			# total probability is the product of the conditional probabilities
-			p += math.log2(C / (N + (alpha * V))) # this prevents underflow (reversed in return statement)
-		return pow(2, p)
+			p += math.log2(C / (self.N + (alpha * V))) # this prevents underflow (reversed in return statement)
+		
+	#	print(p)
+		return p
+	
+	# takes a sentence as argument
+	# optionally takes alpha as argument, defaults to 1 (Laplace)
+	# evaluates smoothed likelihood of the sentence against the model
+	def prob_add(self, sentence, alpha = 1) :
+		return pow(2, self.__log_prob_add(sentence, alpha))
 	
 	def perplexity(self, sentences, alpha = 1) :
 		# calculate product of sentence likelihoods
 		p = 0
 		for sentence in sentences :
-			p += math.log2(self.prob_add(sentence, alpha))
-		#	print(p)
+			p += self.__log_prob_add(sentence, alpha)
 		
-		#print(p)
-		#print(len(self.__types))
-		return pow(2, -1 * p / len(self.__types))
-	
-#	def save(self, path) :
-#		file = open(path, "w")
-#		file.write(str(self.__model))
-#		file.close()
-#		file = open(path + "")
-	
-#	def load(self, path) :
-#		file = open(path)
-#		self.__model = eval(file.read())
-#		file.close()
+		h = -1 * p / len(self.__types)
+		return pow(2, h)
 
 	def _perplexity_helper(self, alpha) :
 		return self.perplexity(self.__temp_sentences, alpha)
-
 	def estimate_alpha(self, sentences, n = 3) :
 		self.__temp_sentences = sentences
 		a1 = 0.25
@@ -132,6 +126,7 @@ class Ngram :
 		a3 = a2 + d
 		
 		for i in range(1, n) :
+#			print(a2)
 			a2 = min(a1, a2, a3, key=self._perplexity_helper)
 			d /= 2
 			a1 = a2 - d
@@ -145,39 +140,29 @@ class Ngram :
 
 bigrams = Ngram(2)
 sentences = []
-for file in os.listdir("./assignment1-data/") :
-	if file[0] == 'c' :
+d_sentences =  []
+for file in os.listdir("./assignment1-data/")[0:3] + os.listdir("./assignment1-data/")[28:30] :
+	if file[0] == 'c' and file[1] == '0' :
 		print(file)
-		#for sentence in tokenize("./assignment1-data/" + file) :
-		#	bigrams.update(sentence)
 		sentences += tokenize("./assignment1-data/" + file)
+	elif file[0] == 'd' and file[1] == '0' :
+		print(file)
+		d_sentences += tokenize("./assignment1-data/" + file)
 
+i = 0
+l = len(sentences)
 for sentence in sentences :
+#	print(sentence)
 	bigrams.update(sentence)
+	i += 1
+	if i % 100 == 0 :
+		n = int(i * 50 / l)
+		print("\r[", n * '#', (48 - n) * ' ', "]", 2 * n, '%', end='')
 
-#bigrams.save("./bigrams")
-#s_file = open("./sentences", "w")
-#s_file.write(str(sentences))
-#s_file.close()
-
-#bigrams.load("./bigrams")
-#s_file = open("./sentences")
-#sentences = eval(s_file.read())
-#s_file.close()
-
-sent = ["I", "had", "."]
-print(bigrams.prob_mle(sent))
-print(bigrams.prob_add(sent))
-print(bigrams.prob_add(sent, 0.5))
-
-#alphas = [float(x) / 10 for x in range(0, 10)]
-#perplexities = []
-#for a in alphas :
-#	print(a, " ", bigrams.perplexity(sentences[0:10], alpha = a))
-#	perplexities += [bigrams.perplexity(sentences[0:10], alpha = a)]
-#matplotlib.pyplot.plot(alphas, perplexities)
-#matplotlib.pyplot.show()
-
-a = bigrams.estimate_alpha(sentences, 5)
+print()
+a = bigrams.estimate_alpha(d_sentences[0:10], 5)
 print(a)
-print(bigrams.perplexity(sentences, a))
+print(bigrams.perplexity(d_sentences[0:100], a))
+a = bigrams.estimate_alpha(sentences[0:10], 5)
+print(a)
+print(bigrams.perplexity(sentences[0:100], a))
