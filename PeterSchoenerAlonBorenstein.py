@@ -166,3 +166,16 @@ print(bigrams.perplexity(d_sentences[0:100], a))
 a = bigrams.estimate_alpha(sentences[0:10], 5)
 print(a)
 print(bigrams.perplexity(sentences[0:100], a))
+# Authors of the documents
+# file 		 author
+# ------- 	--------
+# c*.txt 	Wilkie Collins
+# d*.txt 	Charles Dickens
+# t01.txt	Charles Dickens
+# t02.txt	Charles Dickens
+# t03.txt	Wilkie Collins
+# t04.txt	Charles Dickens
+# t05.txt	Wilkie Collins
+# t06.txt 	Mark Twain
+# t07.txt	Lewis Carroll
+# t08.txt	Jane Austen
