@@ -148,39 +148,86 @@ class Ngram :
 		return min(a1, a2, a3, key=self._perplexity_helper)
 
 	def __str__(self) :
-		return "Order " + str(self.__n + 1) + " ngram model with " + self.__token_ct + " entries:\n[" + str(self.__model) + "]"
+		return "Order " + str(self.__n + 1) + " ngram model with " + "???" + " entries:\n[" + str(self.__model) + "]"
+
+# represents an ngram model but with backoff probability estimation
+class BackoffNgram (Ngram) :
+	def __init__(self, n) :
+		super.__init__(n)
+	
+	def __log_prob(self, sentence, alpha = 1) :
+		return 0
+	
+	def prob(self, sentence) :
+		return pow(2, self.__log_prob(sentence, alpha))
+	
+	def perplexity(self, sentences, alpha = 1) :
+		# calculate product of sentence likelihoods
+		p = 0
+		for sentence in sentences :
+			p += self.__log_prob(sentence, alpha)
+		
+		h = -1 * p / sum([len(s) for s in sentences])
+		return pow(2, h)
 
 # test data
-bigrams = Ngram(2)
-sentences = []
-d_sentences =  []
-for file in os.listdir("./assignment1-data/")[0:3] + os.listdir("./assignment1-data/")[28:30] :
-	if file[0] == 'c' and file[1] == '0' :
+# bigrams = Ngram(2)
+test_set = []
+c_sentences = []
+d_sentences = []
+c_test = []
+d_test = []
+for file in os.listdir("./assignment1-data/") :
+	tokens = tokenize("./assignment1-data/" + file)
+	if file[0] == 'c' :
 		print(file)
-		sentences += tokenize("./assignment1-data/" + file)
-	elif file[0] == 'd' and file[1] == '0' :
+		if file[1:3] == "00" :
+			c_test += tokens
+		else :
+			c_sentences += tokens
+	elif file[0] == 'd' :
 		print(file)
-		d_sentences += tokenize("./assignment1-data/" + file)
+		if file[1:3] == "00" :
+			d_test += tokens
+		else :
+			d_sentences += tokens
+	elif file[0] == 't' :
+		print(file)
+		test_set += [tokens]
+
+models = [[Ngram(n) for n in range(1, 4)] for training_set in range(0, 2)]
+for order in range(1, 4) :
+	for sentence in c_sentences :
+		models[0][order - 1].update(sentence)
+	for sentence in d_sentences :
+		models[1][order - 1].update(sentence)
+
+print("c00", [models[training_set][order - 1].perplexity(c_test) for training_set in range(0, 2) for order in range(1, 4)], [models[training_set][order - 1].perplexity(c_test, alpha = 0.1) for training_set in range(0, 1) for order in range(1, 4)])
+print("d00", [models[training_set][order - 1].perplexity(d_test) for training_set in range(0, 2) for order in range(1, 4)], [models[training_set][order - 1].perplexity(d_test, alpha = 0.1) for training_set in range(0, 1) for order in range(1, 4)])
+for test_document in test_set :
+	print("d00", [models[training_set][order - 1].perplexity(test_document) for training_set in range(0, 1) for order in range(1, 4)], [models[training_set][order - 1].perplexity(test_document, alpha = 0.1) for training_set in range(0, 1) for order in range(1, 4)])
 
 # progress bar
-i = 0
-l = len(sentences)
-for sentence in sentences :
-#	print(sentence)
-	bigrams.update(sentence)
-	i += 1
-	if i % 100 == 0 :
-		n = int(i * 50 / l)
-		print("\r[", n * '#', (48 - n) * ' ', "]", 2 * n, '%', end='')
-print()
+# i = 0
+# l = len(sentences)
+# for sentence in sentences :
+# #	print(sentence)
+	# bigrams.update(sentence)
+	# i += 1
+	# if i % 100 == 0 :
+		# n = int(i * 50 / l)
+		# print("\r[", n * '#', (48 - n) * ' ', "]", 2 * n, '%', end='')
+# print()
 
 # test perplexity and alpha estimates
-a = bigrams.estimate_alpha(d_sentences[0:10], n = 10)
-print(a)
-print(bigrams.perplexity(d_sentences[0:100], a))
-a = bigrams.estimate_alpha(sentences[0:10], n = 10)
-print(a)
-print(bigrams.perplexity(sentences[0:100], a))
+# for a in range(1, 11) :
+	# a /= 10
+	# #a = bigrams.estimate_alpha(d_sentences[0:10], n = 10)
+	# print(a)
+	# print(bigrams.perplexity(d_sentences[10:100], a))
+	# #a = bigrams.estimate_alpha(sentences[0:10], n = 10)
+	# #print(a)
+	# print(bigrams.perplexity(sentences[10:100], a))
 
 # Authors of the documents
 # file 		 author
