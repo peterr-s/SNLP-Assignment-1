@@ -85,6 +85,7 @@ class Ngram :
 	
 		# log2(probability of sentence) so far
 		p = 0
+		V = len(self.__types)
 		
 		sentence = ["^^^"] + sentence + (["$$$"] * self.__n) # cf. update()
 		for i in range(self.__n, len(sentence)) :
@@ -96,7 +97,6 @@ class Ngram :
 			N = 0 # meaningfully defaults to zero; this is not an error value
 			if key in self.__model :
 				N = self.__model[key]["%%%TOTAL"]
-			V = len(self.__types)
 			
 			# total probability is the product of the conditional probabilities
 			p += math.log2(C / (N + (alpha * V)))
@@ -202,10 +202,12 @@ for order in range(1, 4) :
 	for sentence in d_sentences :
 		models[1][order - 1].update(sentence)
 
-print("c00", [models[training_set][order - 1].perplexity(c_test) for training_set in range(0, 2) for order in range(1, 4)], [models[training_set][order - 1].perplexity(c_test, alpha = 0.1) for training_set in range(0, 1) for order in range(1, 4)])
-print("d00", [models[training_set][order - 1].perplexity(d_test) for training_set in range(0, 2) for order in range(1, 4)], [models[training_set][order - 1].perplexity(d_test, alpha = 0.1) for training_set in range(0, 1) for order in range(1, 4)])
+print("c00", [models[training_set][order - 1].perplexity(c_test) for training_set in range(0, 2) for order in range(1, 4)], [models[training_set][order - 1].perplexity(c_test, alpha = 0.1) for training_set in range(0, 2) for order in range(1, 4)])
+print("d00", [models[training_set][order - 1].perplexity(d_test) for training_set in range(0, 2) for order in range(1, 4)], [models[training_set][order - 1].perplexity(d_test, alpha = 0.1) for training_set in range(0, 2) for order in range(1, 4)])
+t = 0
 for test_document in test_set :
-	print("d00", [models[training_set][order - 1].perplexity(test_document) for training_set in range(0, 1) for order in range(1, 4)], [models[training_set][order - 1].perplexity(test_document, alpha = 0.1) for training_set in range(0, 1) for order in range(1, 4)])
+	print("t", t, [models[training_set][order - 1].perplexity(test_document) for training_set in range(0, 2) for order in range(1, 4)], [models[training_set][order - 1].perplexity(test_document, alpha = 0.1) for training_set in range(0, 2) for order in range(1, 4)])
+	t += 1
 
 # progress bar
 # i = 0
