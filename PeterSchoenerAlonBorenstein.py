@@ -170,13 +170,14 @@ class BackoffNgram (Ngram) :
 		h = -1 * p / sum([len(s) for s in sentences])
 		return pow(2, h)
 
-# test data
-# bigrams = Ngram(2)
+# datasets
 test_set = []
 c_sentences = []
 d_sentences = []
 c_test = []
 d_test = []
+
+# go through each file, tokenizing into appropriate dataset
 for file in os.listdir("./assignment1-data/") :
 	tokens = tokenize("./assignment1-data/" + file)
 	if file[0] == 'c' :
@@ -193,8 +194,10 @@ for file in os.listdir("./assignment1-data/") :
 			d_sentences += tokens
 	elif file[0] == 't' :
 		print(file)
-		test_set += [tokens]
+		test_set += [tokens] # separate by document
 
+# make models: one each of order 1, 2, 3 with dataset c and d
+# populate models with appropriate ngrams
 models = [[Ngram(n) for n in range(1, 4)] for training_set in range(0, 2)]
 for order in range(1, 4) :
 	for sentence in c_sentences :
@@ -202,45 +205,10 @@ for order in range(1, 4) :
 	for sentence in d_sentences :
 		models[1][order - 1].update(sentence)
 
+# print perplexity table (perplexity of each model on each test document)
 print("c00", [models[training_set][order - 1].perplexity(c_test) for training_set in range(0, 2) for order in range(1, 4)], [models[training_set][order - 1].perplexity(c_test, alpha = 0.1) for training_set in range(0, 2) for order in range(1, 4)])
 print("d00", [models[training_set][order - 1].perplexity(d_test) for training_set in range(0, 2) for order in range(1, 4)], [models[training_set][order - 1].perplexity(d_test, alpha = 0.1) for training_set in range(0, 2) for order in range(1, 4)])
 t = 0
 for test_document in test_set :
 	print("t", t, [models[training_set][order - 1].perplexity(test_document) for training_set in range(0, 2) for order in range(1, 4)], [models[training_set][order - 1].perplexity(test_document, alpha = 0.1) for training_set in range(0, 2) for order in range(1, 4)])
 	t += 1
-
-# progress bar
-# i = 0
-# l = len(sentences)
-# for sentence in sentences :
-# #	print(sentence)
-	# bigrams.update(sentence)
-	# i += 1
-	# if i % 100 == 0 :
-		# n = int(i * 50 / l)
-		# print("\r[", n * '#', (48 - n) * ' ', "]", 2 * n, '%', end='')
-# print()
-
-# test perplexity and alpha estimates
-# for a in range(1, 11) :
-	# a /= 10
-	# #a = bigrams.estimate_alpha(d_sentences[0:10], n = 10)
-	# print(a)
-	# print(bigrams.perplexity(d_sentences[10:100], a))
-	# #a = bigrams.estimate_alpha(sentences[0:10], n = 10)
-	# #print(a)
-	# print(bigrams.perplexity(sentences[10:100], a))
-
-# Authors of the documents
-# file 		 author
-# ------- 	--------
-# c*.txt 	Wilkie Collins
-# d*.txt 	Charles Dickens
-# t01.txt	Charles Dickens
-# t02.txt	Charles Dickens
-# t03.txt	Wilkie Collins
-# t04.txt	Charles Dickens
-# t05.txt	Wilkie Collins
-# t06.txt 	Mark Twain
-# t07.txt	Lewis Carroll
-# t08.txt	Jane Austen
