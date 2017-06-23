@@ -205,10 +205,39 @@ for order in range(1, 4) :
 	for sentence in d_sentences :
 		models[1][order - 1].update(sentence)
 
-# print perplexity table (perplexity of each model on each test document)
-print("c00", [models[training_set][order - 1].perplexity(c_test) for training_set in range(0, 2) for order in range(1, 4)], [models[training_set][order - 1].perplexity(c_test, alpha = 0.1) for training_set in range(0, 2) for order in range(1, 4)])
-print("d00", [models[training_set][order - 1].perplexity(d_test) for training_set in range(0, 2) for order in range(1, 4)], [models[training_set][order - 1].perplexity(d_test, alpha = 0.1) for training_set in range(0, 2) for order in range(1, 4)])
-t = 0
+# generate perplexity table (perplexity of each model on each test document)
+table = [["", "c1gl", "c1ga", "c2gl", "c2ga", "c3gl", "c3ga", "d1gl", "d1ga", "d2gl", "d2ga", "d3gl", "d3ga"]]
+
+# c00 validation row
+row = ["c00"]
+for training_set in range(0, 2) :
+	for order in range(1, 4) :
+		alpha = models[training_set][order - 1].estimate_alpha(c_sentences, n = 10)
+		row += models[training_set][order - 1].perplexity(c_test)
+		row += models[training_set][order - 1].perplexity(c_test, alpha)
+table += row
+
+# d00 validation row
+row = ["d00"]
+for training_set in range(0, 2) :
+	for order in range(1, 4) :
+		alpha = models[training_set][order - 1].estimate_alpha(d_sentences, n = 10)
+		row += models[training_set][order - 1].perplexity(d_test)
+		row += models[training_set][order - 1].perplexity(d_test, alpha)
+table += row
+
+# t documents
+t = 0;
 for test_document in test_set :
-	print("t", t, [models[training_set][order - 1].perplexity(test_document) for training_set in range(0, 2) for order in range(1, 4)], [models[training_set][order - 1].perplexity(test_document, alpha = 0.1) for training_set in range(0, 2) for order in range(1, 4)])
+	row = ["t0" + str(t)]
+	for training_set in range(0, 2) :
+	for order in range(1, 4) :
+		alpha = models[training_set][order - 1].estimate_alpha(c_sentences + d_sentences, n = 10)
+		row += models[training_set][order - 1].perplexity(test_document)
+		row += models[training_set][order - 1].perplexity(test_document, alpha)
+	table += row
 	t += 1
+
+# print table
+for row in table :
+	print(row)
