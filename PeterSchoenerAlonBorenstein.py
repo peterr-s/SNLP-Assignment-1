@@ -27,6 +27,9 @@ class Ngram :
 		self.__model = {}
 		self.__n = n - 1 # this is a shortcut for splitting input more easily later on
 		self.__types = set([]) # because for 3+ grams len(__model) doesn't necessarily give the number of distinct tokens
+		
+		self.__gt_discount = 0 # Good Turing discount
+		self.__n_1 = 0
 	
 	# takes a sentence as argument
 	# updates the model with the new ngrams
@@ -43,6 +46,8 @@ class Ngram :
 			
 			# check if n-1 gram and full ngram are recognized, if so increment count by one
 			if key in self.__model and sentence[i] in self.__model[key] :
+				if self.__model[key][sentence[i]] == 1 :
+					self.__n_1 -= 1
 				self.__model[key][sentence[i]] += 1
 			else :
 				# if even the n-1 gram is not recognized, expand the outer dictionary
@@ -50,7 +55,10 @@ class Ngram :
 					self.__model[key] = {"%%%TOTAL":0} # this drastically reduces the number of sum operations
 				
 				self.__model[key][sentence[i]] = 1
+				self.__n_1 += 1
 			self.__model[key]["%%%TOTAL"] += 1
+		
+		self.__gt_discount = self.__n_1 / sum([r["%%%TOTAL"] for r in self.__model])
 	
 	# helper method for prob_mle
 	# calculates log2 of the likelihood to prevent underflow
@@ -65,11 +73,8 @@ class Ngram :
 				# if the ngram isn't in the model its MLE probability is 0, which propagates and makes everything 0 anyway
 				return 0
 			
-			# the sum of all the possibilities given the first n-1 terms so the conditional probablility can be calculated
-			total = self.__model[key]["%%%TOTAL"]
-			
 			# total probability is the product of the conditional probabilities
-			p += math.log2(self.__model[key][sentence[i]] / total)
+			p += math.log2(self.__model[key][sentence[i]]) - math.log2(self.__model[key]["%%%TOTAL"])
 		return p
 	
 	# takes a sentence as argument
@@ -99,7 +104,7 @@ class Ngram :
 				N = self.__model[key]["%%%TOTAL"]
 			
 			# total probability is the product of the conditional probabilities
-			p += math.log2(C / (N + (alpha * V)))
+			p += math.log2(C) - math.log2((N + (alpha * V)))
 		
 		return p
 	
@@ -108,6 +113,24 @@ class Ngram :
 	# evaluates smoothed likelihood of the sentence against the model
 	def prob_add(self, sentence, alpha = 1) :
 		return pow(2, self.__log_prob_add(sentence, alpha))
+	
+	def __log_prob_gt(self, sentence) :
+		p = 0
+		unresolved = []
+		
+		sentence = ["^^^"] + sentence + (["$$$"] * self.__n) # cf. update()
+		for i in range(self.__n, len(sentence)) :
+			key = tuple(sentence[i - self.__n : i])
+			if key in self.model and sentence[i] in self.model[key] :
+				p += math.log2(self.model[key][sentence[i]]) - math.log2(self.model[key]["%%%TOTAL"])
+			else :
+				unresolved += [sentence[i + 1 - self.__n : i + 1]]
+		
+		return p, self.__gt_discount, unresolved
+	
+	def prob_gt(self, sentence) :
+		p, discount, unresolved = self.__log_prob_gt(sentence)
+		return pow(2, p), discount, unresolved
 	
 	# takes a sentence as argument
 	# optionally takes alpha as argument, defaults to 1 (Laplace)
@@ -151,9 +174,17 @@ class Ngram :
 		return "Order " + str(self.__n + 1) + " ngram model with " + "???" + " entries:\n[" + str(self.__model) + "]"
 
 # represents an ngram model but with backoff probability estimation
-class BackoffNgram (Ngram) :
+class BackoffNgram :
 	def __init__(self, n) :
-		super.__init__(n)
+		self.__ngram_models = [Ngram(x) for x in range(1, n + 1)]
+		self.__n = n
+	
+	def update(self, sentence) :
+		for model in self.__ngram_models :
+			model.update(sentence)
+		
+		for f_index in range(0, n - 1) :
+			
 	
 	def __log_prob(self, sentence, alpha) :
 		return 0
