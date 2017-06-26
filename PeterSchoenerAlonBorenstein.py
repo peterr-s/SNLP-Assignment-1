@@ -155,10 +155,10 @@ class BackoffNgram (Ngram) :
 	def __init__(self, n) :
 		super.__init__(n)
 	
-	def __log_prob(self, sentence, alpha = 1) :
+	def __log_prob(self, sentence, alpha) :
 		return 0
 	
-	def prob(self, sentence) :
+	def prob(self, sentence, alpha = 1) :
 		return pow(2, self.__log_prob(sentence, alpha))
 	
 	def perplexity(self, sentences, alpha = 1) :
@@ -207,35 +207,39 @@ for order in range(1, 4) :
 
 # generate perplexity table (perplexity of each model on each test document)
 table = [["", "c1gl", "c1ga", "c2gl", "c2ga", "c3gl", "c3ga", "d1gl", "d1ga", "d2gl", "d2ga", "d3gl", "d3ga"]]
+alpha = 0.1
 
 # c00 validation row
 row = ["c00"]
 for training_set in range(0, 2) :
 	for order in range(1, 4) :
-		alpha = models[training_set][order - 1].estimate_alpha(c_sentences, n = 10)
-		row += models[training_set][order - 1].perplexity(c_test)
-		row += models[training_set][order - 1].perplexity(c_test, alpha)
-table += row
+		print("est c validation", training_set, order)
+	#	alpha = models[training_set][order - 1].estimate_alpha(c_sentences)
+		row += [models[training_set][order - 1].perplexity(c_test)]
+		row += [models[training_set][order - 1].perplexity(c_test, alpha)]
+table += [row]
 
 # d00 validation row
 row = ["d00"]
 for training_set in range(0, 2) :
 	for order in range(1, 4) :
-		alpha = models[training_set][order - 1].estimate_alpha(d_sentences, n = 10)
-		row += models[training_set][order - 1].perplexity(d_test)
-		row += models[training_set][order - 1].perplexity(d_test, alpha)
-table += row
+		print("est d validation", training_set, order)
+	#	alpha = models[training_set][order - 1].estimate_alpha(d_sentences)
+		row += [models[training_set][order - 1].perplexity(d_test)]
+		row += [models[training_set][order - 1].perplexity(d_test, alpha)]
+table += [row]
 
 # t documents
 t = 0;
 for test_document in test_set :
 	row = ["t0" + str(t)]
 	for training_set in range(0, 2) :
-	for order in range(1, 4) :
-		alpha = models[training_set][order - 1].estimate_alpha(c_sentences + d_sentences, n = 10)
-		row += models[training_set][order - 1].perplexity(test_document)
-		row += models[training_set][order - 1].perplexity(test_document, alpha)
-	table += row
+		for order in range(1, 4) :
+			print("est t", t, training_set, order)
+	#		alpha = models[training_set][order - 1].estimate_alpha(c_sentences + d_sentences)
+			row += [models[training_set][order - 1].perplexity(test_document)]
+			row += [models[training_set][order - 1].perplexity(test_document, alpha)]
+	table += [row]
 	t += 1
 
 # print table
