@@ -234,9 +234,6 @@ class BackoffNgram :
 		p += self.__ngram_models[0].log_prob_add(unresolved, alpha)
 		p += math.log2(product([1 - d for d in discounts])) * ct
 		
-		#for d in discounts :
-		#	print(d)
-		
 		return p
 	
 	def prob(self, sentence, alpha = 1) :
@@ -288,15 +285,15 @@ def __main__() :
 			models[1][order - 1].update(sentence)
 	
 	# maybe works? takes ages though
-	# backoff_c = BackoffNgram(3)
-	# backoff_d = BackoffNgram(3)
-	# print(len(c_sentences))
-	# for sentence in c_sentences :
-		# print(sentence)
-		# backoff_c.update(sentence)
-	# for sentence in d_sentences :
-		# backoff_d.update(sentence)
-	# print(backoff_c.prob(["This", "is", "a", "test", "."]))
+	backoff_c = BackoffNgram(3)
+	backoff_d = BackoffNgram(3)
+	print(len(c_sentences))
+	for sentence in c_sentences :
+		print(sentence)
+		backoff_c.update(sentence)
+	for sentence in d_sentences :
+		backoff_d.update(sentence)
+	print(backoff_c.prob(["This", "is", "a", "test", "."]))
 
 	# generate perplexity table (perplexity of each model on each test document)
 	table = [["", "c1gl", "c1ga", "c2gl", "c2ga", "c3gl", "c3ga", "d1gl", "d1ga", "d2gl", "d2ga", "d3gl", "d3ga"]]
