@@ -67,7 +67,8 @@ class Ngram :
 				self.__model[key][sentence[i]] = 1
 				self.__n_1 += 1
 			self.__model[key]["%%%TOTAL"] += 1
-		
+	
+	def __update_gt_discount(self) :
 		self.__gt_discount = self.__n_1 / sum([self.__model[r]["%%%TOTAL"] for r in self.__model])
 	
 	# helper method for prob_mle
@@ -125,6 +126,8 @@ class Ngram :
 		return pow(2, self.log_prob_add(sentence, alpha))
 	
 	def log_prob_gt(self, sentence) :
+		self.__update_gt_discount()
+		
 		p = 0
 		unresolved = []
 		
@@ -132,11 +135,23 @@ class Ngram :
 		for i in range(self.__n, len(sentence)) :
 			key = tuple(sentence[i - self.__n : i])
 			if key in self.__model and sentence[i] in self.__model[key] :
-				p += math.log2(self.__model[key][sentence[i]]) - math.log2(self.__model[key]["%%%TOTAL"])
+				p += (math.log2(self.__model[key][sentence[i]]) - math.log2(self.__model[key]["%%%TOTAL"])) + math.log2(1 - self.__gt_discount)
 			else :
 				unresolved += [sentence[i + 1 - self.__n : i + 1]]
 		
 		return p, self.__gt_discount, unresolved
+	
+	def log_prob_gt_ngram(self, ngram) :
+		self.__update_gt_discount()
+		
+		unresolved = []
+		
+		key = tuple(ngram[:self.__n])
+		if key in self.__model and ngram[self.__n] in self.__model[key] :
+			return math.log2(self.__model[key][ngram[self.__n]] / self.__model[key]["%%%TOTAL"]) - math.log2(1 - self.__gt_discount), self.__gt_discount, unresolved
+		else :
+			unresolved = ngram[1:]
+			return 0, self.__gt_discount, unresolved
 	
 	def prob_gt(self, sentence) :
 		p, discount, unresolved = self.log_prob_gt(sentence)
@@ -198,20 +213,29 @@ class BackoffNgram :
 	
 	def log_prob(self, sentence, alpha) :
 		p = 0
-		unresolved = sentence
+		unresolved = []
 		discounts = []
 		
-		for model in self.__ngram_models[:0:-1] : # this is different from [::-1] in that it removes the last element in the reversed array (unigrams should not be reduced)
-			ct = len(unresolved)
-			n_p, n_discount, unresolved = model.log_prob_gt(unresolved)
-			p += n_p
-			p += (math.log2(product([1 - d for d in discounts])) + math.log2(n_discount)) * ct
-			discounts += [n_discount]
+		p, n_discount, unresolved = self.__ngram_models[-1].log_prob_gt(sentence)
+		discounts += [n_discount]
 		
-		# last resort
+		for model in self.__ngram_models[-2:0:-1] : # this is different from [::-1] in that it removes the first and last elements in the reversed array (ngrams are already attempted, unigrams should not be reduced)
+			ct = len(unresolved)
+			for i in range(0, ct) :
+				n_p, n_discount, n_unresolved = model.log_prob_gt_ngram(unresolved[i])
+				unresolved += n_unresolved
+				p += n_p
+				p += math.log2(product([1 - d for d in discounts])) + math.log2(n_discount)
+				discounts += [n_discount]
+			unresolved = unresolved[ct:]
+		
+		# last resort (unigrams with Lindstone smoothing)
 		ct = len(unresolved)
 		p += self.__ngram_models[0].log_prob_add(unresolved, alpha)
 		p += math.log2(product([1 - d for d in discounts])) * ct
+		
+		#for d in discounts :
+		#	print(d)
 		
 		return p
 	
@@ -254,8 +278,8 @@ def __main__() :
 			print(file)
 			test_set += [tokens] # separate by document
 
-	make models: one each of order 1, 2, 3 with dataset c and d
-	populate models with appropriate ngrams
+	# make models: one each of order 1, 2, 3 with dataset c and d
+	# populate models with appropriate ngrams
 	models = [[Ngram(n) for n in range(1, 4)] for training_set in range(0, 2)]
 	for order in range(1, 4) :
 		for sentence in c_sentences :
@@ -274,7 +298,7 @@ def __main__() :
 		# backoff_d.update(sentence)
 	# print(backoff_c.prob(["This", "is", "a", "test", "."]))
 
-	generate perplexity table (perplexity of each model on each test document)
+	# generate perplexity table (perplexity of each model on each test document)
 	table = [["", "c1gl", "c1ga", "c2gl", "c2ga", "c3gl", "c3ga", "d1gl", "d1ga", "d2gl", "d2ga", "d3gl", "d3ga"]]
 
 	# c00 validation row
