@@ -207,6 +207,7 @@ class BackoffNgram :
 		self.__ngram_models = [Ngram(x) for x in range(1, n + 1)]
 		self.__n = n
 	
+	# updates each of the contained models
 	def update(self, sentence) :
 		for model in self.__ngram_models :
 			model.update(sentence)
@@ -250,11 +251,11 @@ class BackoffNgram :
 
 def __main__() :
 	# datasets
-	test_set = []
-	c_sentences = []
-	d_sentences = []
-	c_test = []
-	d_test = []
+	test_set = [] # test
+	c_sentences = [] # training
+	d_sentences = [] # training
+	c_test = [] # validation
+	d_test = [] # validation
 
 	# go through each file, tokenizing into appropriate dataset
 	for file in os.listdir("./assignment1-data/")[0:2] :
@@ -284,7 +285,7 @@ def __main__() :
 		for sentence in d_sentences :
 			models[1][order - 1].update(sentence)
 	
-	# maybe works? takes ages though
+	# create backoff models (training these is the part that takes ages)
 	backoff_c = BackoffNgram(3)
 	backoff_d = BackoffNgram(3)
 	print(len(c_sentences))
@@ -293,15 +294,16 @@ def __main__() :
 		backoff_c.update(sentence)
 	for sentence in d_sentences :
 		backoff_d.update(sentence)
-	print(backoff_c.prob(["This", "is", "a", "test", "."]))
-
+	models[0] += [backoff_c]
+	models[1] += [backoff_d]
+	
 	# generate perplexity table (perplexity of each model on each test document)
 	table = [["", "c1gl", "c1ga", "c2gl", "c2ga", "c3gl", "c3ga", "d1gl", "d1ga", "d2gl", "d2ga", "d3gl", "d3ga"]]
 
 	# c00 validation row
 	row = ["c00"]
 	for training_set in range(0, 2) :
-		for order in range(1, 4) :
+		for order in range(1, 5) :
 			print("est c validation", training_set, order)
 			alpha = models[training_set][order - 1].estimate_alpha(c_sentences)
 			row += [models[training_set][order - 1].perplexity(c_test)]
@@ -311,7 +313,7 @@ def __main__() :
 	# d00 validation row
 	row = ["d00"]
 	for training_set in range(0, 2) :
-		for order in range(1, 4) :
+		for order in range(1, 5) :
 			print("est d validation", training_set, order)
 			alpha = models[training_set][order - 1].estimate_alpha(d_sentences)
 			row += [models[training_set][order - 1].perplexity(d_test)]
@@ -323,7 +325,7 @@ def __main__() :
 	for test_document in test_set :
 		row = ["t0" + str(t)]
 		for training_set in range(0, 2) :
-			for order in range(1, 4) :
+			for order in range(1, 5) :
 				print("est t", t, training_set, order)
 				alpha = models[training_set][order - 1].estimate_alpha(c_sentences + d_sentences)
 				row += [models[training_set][order - 1].perplexity(test_document)]
