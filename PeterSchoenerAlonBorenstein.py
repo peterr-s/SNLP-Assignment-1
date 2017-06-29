@@ -264,11 +264,12 @@ class BackoffNgram :
 	def perplexity(self, sentences, alpha = 1) :
 		# calculate product of sentence likelihoods
 		p = 0
+		l = len(sentences)
 		i = 0
 		for sentence in sentences :
 			p += self.log_prob(sentence, alpha)
 			i += 1
-			print("\r", i, "sentences processed", end='')
+			print("\r", i, "of", l, "sentences processed", end='')
 		print()
 		
 		h = -1 * p / sum([len(s) for s in sentences])
@@ -283,7 +284,7 @@ def __main__() :
 	d_test = []
 
 	# go through each file, tokenizing into appropriate dataset
-	for file in os.listdir("./assignment1-data/")[0:3] :
+	for file in os.listdir("./assignment1-data/") :
 		tokens = tokenize("./assignment1-data/" + file)
 		if file[0] == 'c' :
 			print(file)
@@ -303,6 +304,7 @@ def __main__() :
 
 	# make models: one each of order 1, 2, 3 with dataset c and d
 	# populate models with appropriate ngrams
+	print("training models")
 	models = [[Ngram(n) for n in range(1, 4)] for training_set in range(0, 2)]
 	for order in range(1, 4) :
 		for sentence in c_sentences :
@@ -311,6 +313,7 @@ def __main__() :
 			models[1][order - 1].update(sentence)
 	
 	# maybe works? takes ages though
+	print("training backoff")
 	backoff_c = BackoffNgram(3)
 	backoff_d = BackoffNgram(3)
 	for sentence in c_sentences :
@@ -366,3 +369,17 @@ def __main__() :
 
 if __name__ == "__main__" :
 	__main__()
+
+# Authors of the documents
+# file 		 author
+# ------- 	--------
+# c*.txt 	Wilkie Collins
+# d*.txt 	Charles Dickens
+# t01.txt	Charles Dickens
+# t02.txt	Charles Dickens
+# t03.txt	Wilkie Collins
+# t04.txt	Charles Dickens
+# t05.txt	Wilkie Collins
+# t06.txt 	Mark Twain
+# t07.txt	Lewis Carroll
+# t08.txt	Jane Austen
