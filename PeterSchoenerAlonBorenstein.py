@@ -287,13 +287,12 @@ def __main__() :
 	# maybe works? takes ages though
 	backoff_c = BackoffNgram(3)
 	backoff_d = BackoffNgram(3)
-	print(len(c_sentences))
 	for sentence in c_sentences :
-		print(sentence)
 		backoff_c.update(sentence)
 	for sentence in d_sentences :
 		backoff_d.update(sentence)
-	print(backoff_c.prob(["This", "is", "a", "test", "."]))
+	models[0] += [backoff_c]
+	models[1] += [backoff_d]
 
 	# generate perplexity table (perplexity of each model on each test document)
 	table = [["", "c1gl", "c1ga", "c2gl", "c2ga", "c3gl", "c3ga", "d1gl", "d1ga", "d2gl", "d2ga", "d3gl", "d3ga"]]
