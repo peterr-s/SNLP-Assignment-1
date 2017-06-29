@@ -119,6 +119,27 @@ class Ngram :
 		
 		return p
 	
+	def log_prob_add_ngram(self, ngram, alpha = 1) :
+		if alpha <= 0 :
+			raise ValueError("alpha must be positive.")
+		
+		p = 0
+		V = len(self.__types)
+		for i in range(self.__n, len(ngram)) :
+			key = tuple(ngram[i - self.__n : i])
+			C = alpha # alpha + occurrences of the target ngram
+			if key in self.__model and ngram[i] in self.__model[key]:
+				C += self.__model[key][ngram[i]]
+			# the sum of all the possibilities given the first n-1 terms so the conditional probablility can be calculated
+			N = 0 # meaningfully defaults to zero; this is not an error value
+			if key in self.__model :
+				N = self.__model[key]["%%%TOTAL"]
+			
+			# total probability is the product of the conditional probabilities
+			p += math.log2(C) - math.log2((N + (alpha * V)))
+		
+		return p
+	
 	# takes a sentence as argument
 	# optionally takes alpha as argument, defaults to 1 (Laplace)
 	# evaluates smoothed likelihood of the sentence against the model
@@ -231,7 +252,8 @@ class BackoffNgram :
 		
 		# last resort (unigrams with Lindstone smoothing)
 		ct = len(unresolved)
-		p += self.__ngram_models[0].log_prob_add(unresolved, alpha)
+		for word in unresolved :
+			p += self.__ngram_models[0].log_prob_add_ngram(word, alpha = alpha)
 		p += math.log2(product([1 - d for d in discounts])) * ct
 		
 		return p
@@ -242,8 +264,12 @@ class BackoffNgram :
 	def perplexity(self, sentences, alpha = 1) :
 		# calculate product of sentence likelihoods
 		p = 0
+		i = 0
 		for sentence in sentences :
 			p += self.log_prob(sentence, alpha)
+			i += 1
+			print("\r", i, "sentences processed", end='')
+		print()
 		
 		h = -1 * p / sum([len(s) for s in sentences])
 		return pow(2, h)
@@ -257,7 +283,7 @@ def __main__() :
 	d_test = []
 
 	# go through each file, tokenizing into appropriate dataset
-	for file in os.listdir("./assignment1-data/")[0:2] :
+	for file in os.listdir("./assignment1-data/")[0:3] :
 		tokens = tokenize("./assignment1-data/" + file)
 		if file[0] == 'c' :
 			print(file)
@@ -301,7 +327,7 @@ def __main__() :
 	# c00 validation row
 	row = ["c00"]
 	for training_set in range(0, 2) :
-		for order in range(1, 3) :
+		for order in range(1, 4) :
 			print("est c validation", training_set, order)
 			alpha = models[training_set][order - 1].estimate_alpha(c_sentences)
 			row += [models[training_set][order - 1].perplexity(c_test)]
@@ -312,7 +338,7 @@ def __main__() :
 	# d00 validation row
 	row = ["d00"]
 	for training_set in range(0, 2) :
-		for order in range(1, 3) :
+		for order in range(1, 4) :
 			print("est d validation", training_set, order)
 			alpha = models[training_set][order - 1].estimate_alpha(d_sentences)
 			row += [models[training_set][order - 1].perplexity(d_test)]
@@ -325,7 +351,7 @@ def __main__() :
 	for test_document in test_set :
 		row = ["t0" + str(t)]
 		for training_set in range(0, 2) :
-			for order in range(1, 3) :
+			for order in range(1, 4) :
 				print("est t", t, training_set, order)
 				alpha = models[training_set][order - 1].estimate_alpha(c_sentences + d_sentences)
 				row += [models[training_set][order - 1].perplexity(test_document)]
