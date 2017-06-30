@@ -68,7 +68,7 @@ class Ngram :
 				self.__n_1 += 1
 			self.__model[key]["%%%TOTAL"] += 1
 	
-	def __update_gt_discount(self) :
+	def update_gt_discount(self) :
 		self.__gt_discount = self.__n_1 / sum([self.__model[r]["%%%TOTAL"] for r in self.__model])
 	
 	# helper method for prob_mle
@@ -147,7 +147,7 @@ class Ngram :
 		return pow(2, self.log_prob_add(sentence, alpha))
 	
 	def log_prob_gt(self, sentence) :
-		self.__update_gt_discount()
+		# self.__update_gt_discount()
 		
 		p = 0
 		unresolved = []
@@ -163,7 +163,7 @@ class Ngram :
 		return p, self.__gt_discount, unresolved
 	
 	def log_prob_gt_ngram(self, ngram) :
-		self.__update_gt_discount()
+		# self.__update_gt_discount()
 		
 		unresolved = []
 		
@@ -232,6 +232,10 @@ class BackoffNgram :
 		for model in self.__ngram_models :
 			model.update(sentence)
 	
+	def finalize(self) :
+		for model in self.__ngram_models :
+			model.update_gt_discount()
+	
 	def log_prob(self, sentence, alpha) :
 		p = 0
 		unresolved = []
@@ -264,13 +268,13 @@ class BackoffNgram :
 	def perplexity(self, sentences, alpha = 1) :
 		# calculate product of sentence likelihoods
 		p = 0
-		l = len(sentences)
-		i = 0
+		# l = len(sentences)
+		# i = 0
 		for sentence in sentences :
 			p += self.log_prob(sentence, alpha)
-			i += 1
-			print("\r", i, "of", l, "sentences processed", end='')
-		print()
+			# i += 1
+			# print("\r", i, "of", l, "sentences processed", end = '')
+		# print()
 		
 		h = -1 * p / sum([len(s) for s in sentences])
 		return pow(2, h)
@@ -284,27 +288,33 @@ def __main__() :
 	d_test = []
 
 	# go through each file, tokenizing into appropriate dataset
-	for file in os.listdir("./assignment1-data/") :
+	i = 0
+	files = os.listdir("./assignment1-data/")
+	l = len(files)
+	for file in files :
 		tokens = tokenize("./assignment1-data/" + file)
 		if file[0] == 'c' :
-			print(file)
+			# print(file)
 			if file[1:3] == "00" :
 				c_test += tokens
 			else :
 				c_sentences += tokens
 		elif file[0] == 'd' :
-			print(file)
+			# print(file)
 			if file[1:3] == "00" :
 				d_test += tokens
 			else :
 				d_sentences += tokens
 		elif file[0] == 't' :
-			print(file)
+			# print(file)
 			test_set += [tokens] # separate by document
+		i += 1
+		print("\r" + str(i), "of", l, "files read", end = '')
+	print()
 
 	# make models: one each of order 1, 2, 3 with dataset c and d
 	# populate models with appropriate ngrams
-	print("training models")
+	print("training models", end = '')
 	models = [[Ngram(n) for n in range(1, 4)] for training_set in range(0, 2)]
 	for order in range(1, 4) :
 		for sentence in c_sentences :
@@ -312,16 +322,19 @@ def __main__() :
 		for sentence in d_sentences :
 			models[1][order - 1].update(sentence)
 	
-	# maybe works? takes ages though
-	print("training backoff")
+	# make backoff ngram models
+	print("\rtraining backoff", end = '')
 	backoff_c = BackoffNgram(3)
 	backoff_d = BackoffNgram(3)
 	for sentence in c_sentences :
 		backoff_c.update(sentence)
+	backoff_c.finalize()
 	for sentence in d_sentences :
 		backoff_d.update(sentence)
+	backoff_d.finalize()
 	models[0] += [backoff_c]
 	models[1] += [backoff_d]
+	print("\rmodels trained  ")
 
 	# generate perplexity table (perplexity of each model on each test document)
 	table = [["", "c1gl", "c1ga", "c2gl", "c2ga", "c3gl", "c3ga", "cbo", "d1gl", "d1ga", "d2gl", "d2ga", "d3gl", "d3ga", "dbo"]]
@@ -331,7 +344,7 @@ def __main__() :
 	row = ["c00"]
 	for training_set in range(0, 2) :
 		for order in range(1, 4) :
-			print("est c validation", training_set, order)
+			print("\restimating c validation", training_set, order, end = '')
 			alpha = models[training_set][order - 1].estimate_alpha(c_sentences)
 			row += [models[training_set][order - 1].perplexity(c_test)]
 			row += [models[training_set][order - 1].perplexity(c_test, alpha)]
@@ -342,7 +355,7 @@ def __main__() :
 	row = ["d00"]
 	for training_set in range(0, 2) :
 		for order in range(1, 4) :
-			print("est d validation", training_set, order)
+			print("\restimating d validation", training_set, order, end = '')
 			alpha = models[training_set][order - 1].estimate_alpha(d_sentences)
 			row += [models[training_set][order - 1].perplexity(d_test)]
 			row += [models[training_set][order - 1].perplexity(d_test, alpha)]
@@ -355,7 +368,7 @@ def __main__() :
 		row = ["t0" + str(t)]
 		for training_set in range(0, 2) :
 			for order in range(1, 4) :
-				print("est t", t, training_set, order)
+				print("\restimating t" + str(t), training_set, order, "          ", end = '')
 				alpha = models[training_set][order - 1].estimate_alpha(c_sentences + d_sentences)
 				row += [models[training_set][order - 1].perplexity(test_document)]
 				row += [models[training_set][order - 1].perplexity(test_document, alpha)]
@@ -363,6 +376,8 @@ def __main__() :
 		table += [row]
 		t += 1
 
+	print()
+	
 	# print table
 	for row in table :
 		print(row)
