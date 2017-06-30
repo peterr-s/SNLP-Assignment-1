@@ -324,7 +324,7 @@ def __main__() :
 	models[1] += [backoff_d]
 
 	# generate perplexity table (perplexity of each model on each test document)
-	table = [["", "c1gl", "c1ga", "c2gl", "c2ga", "c3gl", "c3ga", "d1gl", "d1ga", "d2gl", "d2ga", "d3gl", "d3ga"]]
+	table = [["", "c1gl", "c1ga", "c2gl", "c2ga", "c3gl", "c3ga", "cbo", "d1gl", "d1ga", "d2gl", "d2ga", "d3gl", "d3ga", "dbo"]]
 
 	alpha = 0
 	# c00 validation row
