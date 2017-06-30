@@ -37,6 +37,7 @@ class Ngram :
 		self.__model = {}
 		self.__n = n - 1 # this is a shortcut for splitting input more easily later on
 		self.__types = set([]) # because for 3+ grams len(__model) doesn't necessarily give the number of distinct tokens
+		self.__V = 0 # length of __types
 		
 		self.__gt_discount = 0 # Good Turing discount
 		self.__n_1 = 0
@@ -46,6 +47,7 @@ class Ngram :
 	def update(self, sentence) :
 		# add new types to type set
 		self.__types |= set(sentence)
+		self.__V = len(self.__types)
 	
 		# add sentence begin and end tags
 		sentence = ["^^^"] + sentence + (["$$$"] * self.__n)
@@ -101,21 +103,19 @@ class Ngram :
 	
 		# log2(probability of sentence) so far
 		p = 0
-		V = len(self.__types)
 		
 		sentence = ["^^^"] + sentence + (["$$$"] * self.__n) # cf. update()
 		for i in range(self.__n, len(sentence)) :
 			key = tuple(sentence[i - self.__n : i])
 			C = alpha # alpha + occurrences of the target ngram
-			if key in self.__model and sentence[i] in self.__model[key]:
-				C += self.__model[key][sentence[i]]
-			# the sum of all the possibilities given the first n-1 terms so the conditional probablility can be calculated
-			N = 0 # meaningfully defaults to zero; this is not an error value
+			N = 0 # the sum of all the possibilities given the first n-1 terms so the conditional probablility can be calculated; meaningfully defaults to zero; this is not an error value
 			if key in self.__model :
 				N = self.__model[key]["%%%TOTAL"]
+				if sentence[i] in self.__model[key] :
+					C += self.__model[key][sentence[i]]
 			
 			# total probability is the product of the conditional probabilities
-			p += math.log2(C) - math.log2((N + (alpha * V)))
+			p += math.log2(C) - math.log2((N + (alpha * self.__V)))
 		
 		return p
 	
@@ -147,8 +147,6 @@ class Ngram :
 		return pow(2, self.log_prob_add(sentence, alpha))
 	
 	def log_prob_gt(self, sentence) :
-		# self.__update_gt_discount()
-		
 		p = 0
 		unresolved = []
 		
@@ -163,8 +161,6 @@ class Ngram :
 		return p, self.__gt_discount, unresolved
 	
 	def log_prob_gt_ngram(self, ngram) :
-		# self.__update_gt_discount()
-		
 		unresolved = []
 		
 		key = tuple(ngram[:self.__n])
@@ -232,7 +228,7 @@ class BackoffNgram :
 		for model in self.__ngram_models :
 			model.update(sentence)
 	
-	def finalize(self) :
+	def finalize(self) : # this minimizes the number of calls to Ngram.update_gt_discount(), vastly reducing run time
 		for model in self.__ngram_models :
 			model.update_gt_discount()
 	
@@ -268,13 +264,8 @@ class BackoffNgram :
 	def perplexity(self, sentences, alpha = 1) :
 		# calculate product of sentence likelihoods
 		p = 0
-		# l = len(sentences)
-		# i = 0
 		for sentence in sentences :
 			p += self.log_prob(sentence, alpha)
-			# i += 1
-			# print("\r", i, "of", l, "sentences processed", end = '')
-		# print()
 		
 		h = -1 * p / sum([len(s) for s in sentences])
 		return pow(2, h)
@@ -294,27 +285,24 @@ def __main__() :
 	for file in files :
 		tokens = tokenize("./assignment1-data/" + file)
 		if file[0] == 'c' :
-			# print(file)
 			if file[1:3] == "00" :
 				c_test += tokens
 			else :
 				c_sentences += tokens
 		elif file[0] == 'd' :
-			# print(file)
 			if file[1:3] == "00" :
 				d_test += tokens
 			else :
 				d_sentences += tokens
 		elif file[0] == 't' :
-			# print(file)
 			test_set += [tokens] # separate by document
 		i += 1
-		print("\r" + str(i), "of", l, "files read", end = '')
+		print("\rread",  i, "of", l, "files", end = '')
 	print()
 
 	# make models: one each of order 1, 2, 3 with dataset c and d
 	# populate models with appropriate ngrams
-	print("training models", end = '')
+	print("\rtraining models", end = '')
 	models = [[Ngram(n) for n in range(1, 4)] for training_set in range(0, 2)]
 	for order in range(1, 4) :
 		for sentence in c_sentences :
@@ -344,7 +332,7 @@ def __main__() :
 	row = ["c00"]
 	for training_set in range(0, 2) :
 		for order in range(1, 4) :
-			print("\restimating c validation", training_set, order, end = '')
+			print("\rcalculating c00", training_set, order, end = '')
 			alpha = models[training_set][order - 1].estimate_alpha(c_sentences)
 			row += [models[training_set][order - 1].perplexity(c_test)]
 			row += [models[training_set][order - 1].perplexity(c_test, alpha)]
@@ -355,7 +343,7 @@ def __main__() :
 	row = ["d00"]
 	for training_set in range(0, 2) :
 		for order in range(1, 4) :
-			print("\restimating d validation", training_set, order, end = '')
+			print("\rcalculating d00", training_set, order, end = '')
 			alpha = models[training_set][order - 1].estimate_alpha(d_sentences)
 			row += [models[training_set][order - 1].perplexity(d_test)]
 			row += [models[training_set][order - 1].perplexity(d_test, alpha)]
@@ -363,12 +351,12 @@ def __main__() :
 	table += [row]
 
 	# t documents
-	t = 0;
+	t = 1;
 	for test_document in test_set :
 		row = ["t0" + str(t)]
 		for training_set in range(0, 2) :
 			for order in range(1, 4) :
-				print("\restimating t" + str(t), training_set, order, "          ", end = '')
+				print("\rcalculating t0" + str(t), training_set, order, end = '')
 				alpha = models[training_set][order - 1].estimate_alpha(c_sentences + d_sentences)
 				row += [models[training_set][order - 1].perplexity(test_document)]
 				row += [models[training_set][order - 1].perplexity(test_document, alpha)]
@@ -376,6 +364,7 @@ def __main__() :
 		table += [row]
 		t += 1
 
+	print("table generated    ")
 	print()
 	
 	# print table
